@@ -1,0 +1,371 @@
+
+  CREATE OR REPLACE FORCE EDITIONABLE VIEW "DBAMV"."VDIC_DH_ATENDIMENTOS_PSO" ("ATENDIMENTO", "PRONTUARIO", "NM_PACIENTE", "IDADE", "GENERO", "CONVENIO", "DT_ATENDIMENTO", "HORA_ATENDIMENTO", "OBS_CLASSIFICACAO", "CLASSIFICACAO", "DS_QUEIXA_PRINCIPAL", "CD_CID", "CD_ESPECIALID", "ESPECIALIDADE", "CD_PRESTADOR", "PRESTADOR", "ESPEC_PRESTADOR", "ATENDENTE_SAC", "ATENDENTE_TRIAGEM", "SENHA", "CLASSIFICACAO_INICIO", "CLASSIFICACAO_FIM", "ESPERA_CLASSIFICACAO", "TEMPO_CLASSIFICACAO", "AG_CADASTRO", "CADASTRO_INICIO", "CADASTRO_FIM", "TEMPO_CADASTRO", "AG_CONSULTA", "MEDICO_INICIAL", "MEDICO_FINAL", "TEMPO_AT_MEDICO", "QDT_CHAM_MEDICA", "TIPO_ALTA_PSO", "DATA_ALTA", "HORA_ALTA", "DIA_SEMANA", "TP_ATENDIMENTO", "TP_ATEND", "DS_ORI_ATE", "CD_PROCEDENCIA", "PROCEDENCIA", "DS_MULTI_EMPRESA") AS 
+  SELECT 
+
+         res.cd_atendimento ATENDIMENTO
+        ,res.prontuario
+        ,res.nm_paciente
+        ,res.idade
+        ,res.genero
+        ,res.convenio
+        ,res.dt_atendimento
+        ,res.hora_atendimento
+        ,res.DS_TIPO_RISCO OBS_CLASSIFICACAO
+        ,res.NM_COR CLASSIFICACAO
+        ,res.DS_QUEIXA_PRINCIPAL
+        ,res.cd_cid
+        --,res.DS_SINTOMA FLUXOGRAMA_SINTOMA
+        --,res.DISCRIMINADOR
+        ,res.CD_ESPECIALID
+        ,res.DS_ESPECIALID ESPECIALIDADE
+        ,res.cd_prestador
+        ,res.prestador
+        ,res.espec_prestador
+        ,res.nm_usuario atendente_sac
+        ,res.cd_usuario atendente_triagem
+        ,to_char(RETIRADA_SENHA, 'dd/mm/yyyy hh24:mi:ss') senha 
+        ,to_char(CLASSIFICACAO_INICIO, 'dd/mm/yyyy hh24:mi:ss') classificacao_inicio
+        ,to_char(CLASSIFICACAO_FINAL, 'dd/mm/yyyy hh24:mi:ss') classificacao_fim
+        ,FNC_DH_CONVERTE_HORA_MINUTO(AVG(CLASSIFICACAO_INICIO - RETIRADA_SENHA)) espera_classificacao 
+        ,FNC_DH_CONVERTE_HORA_MINUTO(AVG(CLASSIFICACAO_FINAL - CLASSIFICACAO_INICIO)) tempo_classificacao
+        ,FNC_DH_CONVERTE_HORA_MINUTO(AVG(CADASTRO_INICIO - CLASSIFICACAO_FINAL)) ag_cadastro
+        ,to_char(CADASTRO, 'dd/mm/yyyy hh24:mi:ss') CADASTRO_INICIO
+        ,to_char(CADASTRO_FIM, 'dd/mm/yyyy hh24:mi:ss') CADASTRO_FIM
+        ,FNC_DH_CONVERTE_HORA_MINUTO(AVG(CADASTRO_FIM - CADASTRO_INICIO)) tempo_cadastro
+        ,FNC_DH_CONVERTE_HORA_MINUTO(AVG(MEDICO_INICIAL - CADASTRO_FIM)) ag_consulta
+        ,to_char(MEDICO_INICIAL, 'dd/mm/yyyy hh24:mi:ss') MEDICO_INICIAL
+        ,to_char(MEDICO_FINAL, 'dd/mm/yyyy hh24:mi:ss') MEDICO_FINAL
+        ,FNC_DH_CONVERTE_HORA_MINUTO(AVG(MEDICO_FINAL - MEDICO_INICIAL)) tempo_at_medico
+        ,res.Qdt_cham_medica
+        --,res.exame
+        --,res.descricao
+        --,res.Medicamento
+        --,res.desc_medicacao
+        ,res.tipo_alta_pso
+        ,res.data_alta
+        ,res.hora_alta
+        ,res.dia_semana
+       -- ,cd_multi_empresa
+        ,(case when tp_atendimento = 'U' then 'URGÊNCIA' 
+               when tp_atendimento = 'A' then 'AMBULATÓRIO' 
+               when tp_atendimento = 'E' then 'EXTERNO'
+               when tp_atendimento = 'I' then 'INTERNAÇÃO'
+               when tp_atendimento = 'H' then 'HOME CARE'
+               when tp_atendimento = 'V' then 'BUSCA ATIVA'
+               END) tp_atendimento
+       ,tp_atendimento tp_atend        
+        --,cd_ori_ate
+        ,res.ds_ori_ate
+        ,res.cd_procedencia
+        ,res.ds_loc_proced procedencia
+        ,res.ds_multi_empresa
+        
+
+FROM
+        (SELECT  
+                 atendime.cd_atendimento
+                ,SACR_CLASSIFICACAO_RISCO.CD_CLASSIFICACAO_RISCO CD_CLASSIFICACAO_RISCO
+                ,SACR_CLASSIFICACAO_RISCO.DH_CLASSIFICACAO_RISCO
+                ,SACR_CLASSIFICACAO.DS_TIPO_RISCO
+                ,SACR_COR_REFERENCIA.NM_COR
+                ,TRIAGEM_ATENDIMENTO.DS_OBSERVACAO
+                ,TRIAGEM_ATENDIMENTO.DS_QUEIXA_PRINCIPAL
+                ,ESPECIALID.CD_ESPECIALID
+                ,ESPECIALID.DS_ESPECIALID
+                ,TRIAGEM_ATENDIMENTO.DS_ALERGIA
+                ,SACR_SINTOMA_AVALIACAO.DS_SINTOMA
+                ,PAGU_PERGUNTA.DS_PERGUNTA DISCRIMINADOR
+                ,atendime.dt_atendimento
+                ,paciente.cd_paciente prontuario 
+                ,paciente.nm_paciente
+                ,FN_IDADE(paciente.DT_NASCIMENTO) IDADE
+                ,paciente.tp_sexo genero
+                ,TO_CHAR(ATENDIME.HR_ATENDIMENTO, 'HH24:MI') HORA_ATENDIMENTO
+                ,atendime.dt_alta data_alta
+                ,to_char(atendime.hr_alta, 'HH24:MI') hora_alta
+                ,DECODE(TO_CHAR(ATENDIME.HR_ATENDIMENTO, 'D'),1, 'Domingo', 2, 'Segunda-Feira', 3, 'Terça-Feira', 4, 'Quarta-Feira', 5, 'Quinta-Feira', 6, 'Sexta-Feira', 7, 'Sábado' ) DIA_SEMANA
+                ,(SELECT nm_convenio FROM DBAMV.CONVENIO WHERE CD_CONVENIO = atendime.CD_CONVENIO) CONVENIO
+                ,tip_res.ds_tip_res tipo_alta_pso
+                ,atendime.cd_prestador                
+                ,prestador.nm_prestador  prestador
+                ,multi_empresas.ds_multi_empresa
+                ,ori_ate.ds_ori_ate
+                ,loc_proced.cd_loc_proced cd_procedencia
+                ,loc_proced.ds_loc_proced
+                ,(select CD_CID 
+                   from DIAGNOSTICO_ATENDIME da, pw_documento_clinico dc
+                   where
+                        da.cd_atendimento    = dc.cd_atendimento
+                   and da.cd_documento_clinico = dc.cd_documento_clinico     
+                   and  da.cd_atendimento = atendime.cd_atendimento
+                   and  dc.tp_status = 'FECHADO'
+                   and rownum = 1 ) cd_cid   
+                ,case when itpre_med.cd_tip_esq in ('ELA', 'EXL','EXC') then 'laboratorio'
+                      when itpre_med.cd_tip_esq in ('EXI') then 'imagem' else null end Exame
+                ,case when itpre_med.cd_tip_esq in ('MDU', 'MAC','MDA', 'MAV', 'MDN', 'MDP', 'MCC') then itpre_med.cd_tip_esq 
+                   end Medicamento
+                ,(select cd_tip_presc ||' - '|| ds_tip_presc from tip_presc 
+                  where cd_tip_presc = itpre_med.cd_tip_presc and cd_tip_esq = itpre_med.cd_tip_esq and itpre_med.cd_tip_esq in ('ELA', 'EXL','EXC', 'EXI')) descricao
+                ,atendime.nm_usuario
+                ,(select cd_tip_presc ||' - '|| ds_tip_presc from tip_presc 
+                  where cd_tip_presc = itpre_med.cd_tip_presc and cd_tip_esq = itpre_med.cd_tip_esq and itpre_med.cd_tip_esq in ('MDU', 'MAC','MDA', 'MAV', 'MDN', 'MDP', 'MCC')) desc_medicacao
+                ,triagem_atendimento.nm_usuario_triagem
+                ,triagem_atendimento.cd_usuario
+                ,atendime.CD_MULTI_EMPRESA
+                ,atendime.CD_ORI_ATE
+                ,atendime.TP_ATENDIMENTO
+                ,(select especialid.ds_especialid from esp_med, especialid
+                  where especialid.cd_especialid = esp_med.cd_especialid
+                  and   sn_especial_principal = 'S'
+                  and   esp_med.cd_prestador = prestador.cd_prestador
+                  ) espec_prestador
+
+           ,(SELECT COUNT(*) total_cham_medico FROM DBAMV.SACR_TEMPO_PROCESSO
+              WHERE CD_TIPO_TEMPO_PROCESSO = 30
+              AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO
+            ) Qdt_cham_medica
+
+      --CADASTRO TOTEM - RETIRADA SENHA
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 1 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) RETIRADA_SENHA
+
+           ,CASE WHEN 
+                   --CLASSIFICAÃƒâ€¡ÃƒÆ’O CHAMADA PAINEL
+                   (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                    WHERE CD_TIPO_TEMPO_PROCESSO = 10 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) IS NULL 
+                    THEN 
+                    --CLASSIFICAÃƒâ€¡ÃƒÆ’O CHAMADA ATENDIMENTO
+                          (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                          WHERE CD_TIPO_TEMPO_PROCESSO = 11 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO)
+                    ELSE 
+                    --CLASSIFICAÃƒâ€¡ÃƒÆ’O CHAMADA PAINEL
+                    (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                    WHERE CD_TIPO_TEMPO_PROCESSO = 10 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO)      
+            END CLASSIFICACAO_INICIO  
+
+
+          --CLASSIFICAÃƒâ€¡ÃƒÆ’O FINAL
+           ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+             WHERE CD_TIPO_TEMPO_PROCESSO = 12 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) CLASSIFICACAO_FINAL
+
+
+           ,CASE WHEN 
+                   --INICIO CADASTRO CHAMADA
+                   (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                    WHERE CD_TIPO_TEMPO_PROCESSO = 20 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) IS NULL 
+                    THEN 
+                   --INICIO CADASTRO INICIO
+                        (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                         WHERE CD_TIPO_TEMPO_PROCESSO = 21 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO)
+                    ELSE 
+                   --INICIO CADASTRO CHAMADA
+                    (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                     WHERE CD_TIPO_TEMPO_PROCESSO = 20 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO)
+            END CADASTRO
+
+
+          --INICIO CADASTRO CHAMADA
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 20 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) CADASTRO_CHAMADA
+
+
+          --INICIO CADASTRO INICIO
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 21 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) CADASTRO_INICIO
+
+          --FIM CADASTRO
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 22 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) CADASTRO_FIM
+
+
+    --------
+          , CASE WHEN 
+                        (SELECT MIN(DH_CRIACAO) HORARIO
+                          FROM DBAMV.PW_DOCUMENTO_CLINICO, DBAMV.PAGU_OBJETO
+                          WHERE
+                                PW_DOCUMENTO_CLINICO.CD_OBJETO = PAGU_OBJETO.CD_OBJETO
+                          AND   pagu_objeto.cd_objeto = 203
+                          AND   pw_documento_clinico.cd_atendimento = atendime.cd_atendimento
+                          AND   pw_documento_clinico.cd_tipo_documento = 36
+                          and  tp_objeto = 'EVOMED'
+                          and  tp_status = 'FECHADO'
+                         ) > (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                              WHERE CD_TIPO_TEMPO_PROCESSO = 31 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) 
+
+                   THEN 
+                   (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                              WHERE CD_TIPO_TEMPO_PROCESSO = 31 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) 
+                   WHEN
+                        (SELECT MIN(DH_CRIACAO) HORARIO
+                          FROM DBAMV.PW_DOCUMENTO_CLINICO, DBAMV.PAGU_OBJETO
+                          WHERE
+                                PW_DOCUMENTO_CLINICO.CD_OBJETO = PAGU_OBJETO.CD_OBJETO
+                          AND   pagu_objeto.cd_objeto = 203
+                          AND   pw_documento_clinico.cd_atendimento = atendime.cd_atendimento
+                          AND   pw_documento_clinico.cd_tipo_documento = 36
+                          and  tp_objeto = 'EVOMED'
+                          and  tp_status = 'FECHADO'
+                         ) IS NULL              
+                   THEN 
+                   (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+                              WHERE CD_TIPO_TEMPO_PROCESSO = 31 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) 
+                   ELSE
+                        (SELECT MIN(DH_CRIACAO) HORARIO
+                          FROM DBAMV.PW_DOCUMENTO_CLINICO, DBAMV.PAGU_OBJETO
+                          WHERE
+                                PW_DOCUMENTO_CLINICO.CD_OBJETO = PAGU_OBJETO.CD_OBJETO
+                          AND   pagu_objeto.cd_objeto = 203
+                          AND   pw_documento_clinico.cd_atendimento = atendime.cd_atendimento
+                          AND   pw_documento_clinico.cd_tipo_documento = 36
+                          and  tp_objeto = 'EVOMED'
+                          and  tp_status = 'FECHADO'
+                         )               
+                   END MEDICO_INICIAL
+
+
+          --INICIO ATENDIMENTO MÃƒâ€°DICO CHAMADA PELO PAINEL
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 30 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) MEDICO_CHAMADA
+
+
+           --INICIO ATENDIMENTO MÃƒâ€°DICO SACR
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 31 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) MEDICO_INICIO
+
+
+          ,(SELECT MIN(DH_CRIACAO) HORARIO
+                          FROM DBAMV.PW_DOCUMENTO_CLINICO, DBAMV.PAGU_OBJETO
+                          WHERE
+                                PW_DOCUMENTO_CLINICO.CD_OBJETO = PAGU_OBJETO.CD_OBJETO
+                          AND   pagu_objeto.cd_objeto = 203
+                          AND   pw_documento_clinico.cd_atendimento = atendime.cd_atendimento
+                          AND   pw_documento_clinico.cd_tipo_documento = 36
+                          and  tp_objeto = 'EVOMED'
+                          and  tp_status = 'FECHADO'
+
+            )MEDICO_INICIO_DOC
+
+          ,(SELECT MIN(DH_CRIACAO) HORARIO
+                  FROM DBAMV.PW_DOCUMENTO_CLINICO, DBAMV.PAGU_OBJETO
+                  WHERE
+                        PW_DOCUMENTO_CLINICO.CD_OBJETO = PAGU_OBJETO.CD_OBJETO
+                  AND   pagu_objeto.cd_objeto = 210
+                  AND   pw_documento_clinico.cd_atendimento = atendime.cd_atendimento
+                  AND   pw_documento_clinico.cd_tipo_documento = 12
+                  and  tp_objeto = 'SOLINT'
+                  and  tp_status = 'FECHADO'
+
+           ) SOLICITACAO_INTERNACAO
+
+          ,CASE WHEN 
+            --FIM ATENDIMENTO MÃƒâ€°DICO
+            (SELECT 
+                    MAX(HR_ALTA_MEDICA)
+            FROM PW_REGISTRO_ALTA
+            WHERE CD_ATENDIMENTO = atendime.cd_atendimento) IS NULL
+          THEN
+          --FIM ATENDIMENTO MÃƒâ€°DICO
+           (SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 90 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) 
+          ELSE
+          (SELECT 
+                    MAX(HR_ALTA_MEDICA)
+            FROM PW_REGISTRO_ALTA
+            WHERE CD_ATENDIMENTO = atendime.cd_atendimento)
+          END MEDICO_FINAL
+
+          --FIM ATENDIMENTO ENFERMAGEM OU MÃƒâ€°DICO
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 32 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) ALTA_CHECAGENS
+
+          --INICIO ATENDIMENTO MEDICAÃƒâ€¡ÃƒÆ’O
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 71 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) INICIO_MEDICACAO
+
+
+          --FIM ATENDIMENTO MEDICAÃƒâ€¡ÃƒÆ’O
+          ,(SELECT MAX(DH_PROCESSO) FROM DBAMV.SACR_TEMPO_PROCESSO
+            WHERE CD_TIPO_TEMPO_PROCESSO = 72 AND CD_ATENDIMENTO = atendime.CD_ATENDIMENTO) FIM_MEDICACAO
+       
+        FROM  atendime, paciente, pre_med, itpre_med, triagem_atendimento, sacr_classificacao_risco, sacr_classificacao 
+             ,sacr_cor_referencia, especialid, sacr_sintoma_avaliacao, sacr_resposta_paciente, sacr_pergunta_avaliacao 
+             ,sacr_pergunta_triagem, pagu_pergunta, tip_res, prestador, multi_empresas, ori_ate, loc_proced
+
+        where
+            paciente.cd_paciente                               = atendime.cd_paciente
+        and pre_med.cd_pre_med                                 = itpre_med.cd_pre_med(+)
+        and atendime.cd_atendimento                            = pre_med.cd_atendimento(+)
+        and (triagem_atendimento.cd_atendimento(+)             = atendime.cd_atendimento and triagem_atendimento.cd_paciente(+) = paciente.cd_paciente)
+        and sacr_classificacao_risco.cd_triagem_atendimento(+) = triagem_atendimento.cd_triagem_atendimento
+        and sacr_classificacao.cd_classificacao(+)             = sacr_classificacao_risco.cd_classificacao
+        and sacr_cor_referencia.cd_cor_referencia(+)           = sacr_classificacao_risco.cd_cor_referencia
+        and especialid.cd_especialid(+)                        = triagem_atendimento.cd_especialid
+        and sacr_sintoma_avaliacao.cd_sintoma_avaliacao(+)     = sacr_classificacao_risco.cd_sintoma_avaliacao
+        and sacr_resposta_paciente.cd_classificacao_risco(+)   = sacr_classificacao_risco.cd_classificacao_risco
+        and sacr_pergunta_avaliacao.cd_pergunta_avaliacao(+)   = sacr_resposta_paciente.cd_pergunta_avaliacao
+        and sacr_pergunta_triagem.cd_pergunta(+)               = sacr_pergunta_avaliacao.cd_pergunta_triagem
+        and pagu_pergunta.cd_pergunta(+)                       = sacr_pergunta_triagem.cd_pergunta
+        and tip_res.cd_tip_res(+)                              = atendime.cd_tip_res
+        and prestador.cd_prestador                             = atendime.cd_prestador
+        and (triagem_atendimento.CD_MULTI_EMPRESA(+)      = paciente.CD_MULTI_EMPRESA 
+              and paciente.CD_MULTI_EMPRESA               = atendime.CD_MULTI_EMPRESA 
+              and triagem_atendimento.CD_MULTI_EMPRESA(+) = atendime.CD_MULTI_EMPRESA
+            )
+        and multi_empresas.cd_multi_empresa                = atendime.CD_MULTI_EMPRESA
+        and ori_ate.cd_ori_ate                             = atendime.cd_ori_ate
+        and loc_proced.cd_loc_proced(+)                    = atendime.cd_loc_proced
+        and atendime.TP_ATENDIMENTO = 'U' 
+        --and trunc(atendime.dt_atendimento) between to_date('27/07/2018','dd/mm/yyyy') and to_date('27/07/2018','dd/mm/yyyy')
+   )res 
+
+
+GROUP BY
+         res.cd_atendimento
+        ,res.prontuario
+        ,res.nm_paciente
+        ,res.idade
+        ,res.genero
+        ,res.convenio
+        ,res.dt_atendimento
+        ,res.hora_atendimento
+        ,res.DS_TIPO_RISCO
+        ,res.NM_COR
+        ,res.DS_QUEIXA_PRINCIPAL
+        ,res.cd_cid
+        --,res.DS_SINTOMA
+        --,res.DISCRIMINADOR
+        ,res.CD_ESPECIALID
+        ,res.DS_ESPECIALID
+        ,res.cd_prestador
+        ,res.prestador
+        ,res.espec_prestador
+        ,res.nm_usuario
+        ,res.cd_usuario
+        ,to_char(RETIRADA_SENHA, 'dd/mm/yyyy hh24:mi:ss')
+        ,to_char(CLASSIFICACAO_INICIO, 'dd/mm/yyyy hh24:mi:ss')
+        ,to_char(CLASSIFICACAO_FINAL, 'dd/mm/yyyy hh24:mi:ss')
+        ,to_char(CADASTRO, 'dd/mm/yyyy hh24:mi:ss')
+        ,to_char(CADASTRO_FIM, 'dd/mm/yyyy hh24:mi:ss')
+        ,to_char(MEDICO_INICIAL, 'dd/mm/yyyy hh24:mi:ss')
+        ,to_char(MEDICO_FINAL, 'dd/mm/yyyy hh24:mi:ss')
+      --  ,COUNT(distinct(cd_atendimento))
+        ,res.Qdt_cham_medica
+        --,res.exame
+        --,res.descricao
+        --,res.Medicamento
+        --,res.desc_medicacao
+        ,res.tipo_alta_pso
+        ,res.data_alta
+        ,res.hora_alta
+        ,res.dia_semana
+        --,cd_multi_empresa
+        ,res.tp_atendimento
+        --,cd_ori_ate
+        ,ds_ori_ate
+        ,res.cd_procedencia
+        ,res.ds_loc_proced
+        ,ds_multi_empresa
+ 
+
+--ORDER BY 3, 1, 6, 2
+;
