@@ -1,0 +1,67 @@
+SELECT 
+ cd_convenio
+ ,nm_convenio
+ , to_char(To_Date('09/08/2018','dd/mm/yyyy'), 'dd/mm/yyyy') dt_inicio
+ , to_char(To_Date('09/08/2018','dd/mm/yyyy'), 'dd/mm/yyyy') dt_fim
+ ,sum(vl_total_conta) vl_total_conta
+ ,sum(vl_auditado) vl_auditado
+ ,round(sum(vl_auditado)/sum(vl_total_conta) * 100,2) PERC
+ 
+ 
+FROM
+ (SELECT 
+ conta
+ , paciente.cd_paciente
+ , nm_paciente
+ , atendime.cd_atendimento
+ , cd_remessa
+ , cd_fatura
+ , dt_competencia data
+ , To_Char(dt_competencia, 'mm/yyyy') dt_competencia
+ , dt_entrega_da_fatura
+ , VDIC_DH_AUDITORIA_GLOSA.cd_convenio
+ , nm_convenio
+ , VDIC_DH_AUDITORIA_GLOSA.cd_con_pla
+ , ds_con_pla
+ , pro_fat.cd_pro_fat
+ , ds_pro_fat
+ , vl_total_conta
+ , vl_auditado
+ , vl_liquido
+ , CD_LANCAMENTO
+ , SETOR.CD_SETOR
+ , nm_setor
+ , motivo_auditoria.cd_motivo_auditoria
+ --, ds_motivo_auditoria 
+ , coalesce(ds_motivo_auditoria, NULL, 'Não informado') ds_motivo_auditoria
+ , ds_gru_pro 
+ FROM dbamv.VDIC_DH_AUDITORIA_GLOSA
+ , atendime
+ , paciente
+ , con_pla
+ , pro_fat
+ , motivo_auditoria
+ , setor
+ , gru_pro
+ 
+ WHERE VDIC_DH_AUDITORIA_GLOSA.cd_atendimento = atendime.cd_atendimento
+ AND atendime.cd_paciente = paciente.cd_paciente
+ AND VDIC_DH_AUDITORIA_GLOSA.cd_convenio = con_pla.cd_convenio (+)
+ AND VDIC_DH_AUDITORIA_GLOSA.cd_con_pla = con_pla.cd_con_pla (+)
+ AND VDIC_DH_AUDITORIA_GLOSA.cd_pro_fat = pro_fat.cd_pro_fat
+ AND VDIC_DH_AUDITORIA_GLOSA.cd_motivo_auditoria = motivo_auditoria.cd_motivo_auditoria (+)
+ AND VDIC_DH_AUDITORIA_GLOSA.CD_SETOR = SETOR.CD_SETOR (+)
+ AND pro_fat.cd_gru_pro = gru_pro.cd_gru_pro
+ AND VDIC_DH_AUDITORIA_GLOSA.cd_convenio <> 64
+ --AND vl_auditado <> 0
+ 
+ AND dt_entrega_da_fatura between To_Date('09/08/2018','dd/mm/yyyy') and To_Date('09/08/2018','dd/mm/yyyy') 
+ --AND ds_motivo_auditoria IS null
+)
+group by
+ cd_convenio
+ ,nm_convenio
+ , to_char(To_Date('09/08/2018','dd/mm/yyyy'), 'dd/mm/yyyy')
+ , to_char(To_Date('09/08/2018','dd/mm/yyyy'), 'dd/mm/yyyy')
+ 
+order by perc desc
