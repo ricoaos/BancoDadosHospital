@@ -1,0 +1,147 @@
+SELECT 
+   CD_UNID_INT
+   , DS_UNID_INT
+   , DATA
+   , NORMAL
+   , EXTRA
+   , CENSO
+   , (LEITOS + EXTRA) LEITOS
+   , CASE WHEN (LEITOS + EXTRA) < 1 THEN 0 
+          ELSE ROUND((CENSO/(LEITOS + EXTRA))*100,2) 
+     END PERCENTUAL
+FROM(
+   SELECT
+   CD_UNID_INT
+   , DS_UNID_INT
+   , SUM(CENSO) CENSO
+   , SUM(NORMAL) NORMAL
+   , SUM(EXTRA) EXTRA
+   , SUM(LEITOS) LEITOS
+   , DATA
+   
+   FROM(
+         SELECT 
+               UNID_INT.CD_UNID_INT
+             , UNID_INT.DS_UNID_INT
+             , COUNT(ATENDIME.cd_atendimento) CENSO
+             ,0 NORMAL
+             ,0 EXTRA
+             , CONTADOR.DATA
+             , 0 LEITOS
+         FROM DBAMV.MOV_INT
+            ,DBAMV.UNID_INT
+            ,DBAMV.LEITO
+            ,DBAMV.ATENDIME
+            ,( SELECT (TO_DATE('19/07/2018', 'DD/MM/YYYY ')-1 ) + ROWNUM DATA FROM DBAMV.CID
+               WHERE ( TO_DATE('19/07/2018', 'DD/MM/YYYY ')-1 ) + ROWNUM <= TO_DATE(TO_DATE('19/07/2018', 'DD/MM/YYYY '))) CONTADOR
+         WHERE 
+                 Trunc(DT_MOV_INT) <= CONTADOR.DATA - 1
+             And TRUNC(NVL(DT_LIB_MOV, SYSDATE) ) > CONTADOR.DATA - 1
+             And TP_MOV IN('O', 'I')
+             And LEITO.CD_UNID_INT = UNID_INT.CD_UNID_INT 
+             And MOV_INT.CD_ATENDIMENTO = ATENDIME.CD_ATENDIMENTO
+             And ATENDIME.TP_ATENDIMENTO IN ('I')
+             And MOV_INT.CD_LEITO = LEITO.CD_LEITO
+             And ATENDIME.CD_MULTI_EMPRESA 	= 1
+             and cd_atendimento_pai IS NULL
+             and unid_int.tp_unid_int IN ( 'I')
+         group by UNID_INT.CD_UNID_INT, UNID_INT.DS_UNID_INT, CONTADOR.DATA
+ 
+     UNION ALL 
+
+        SELECT 
+             UNID_INT.CD_UNID_INT, 
+             UNID_INT.DS_UNID_INT,
+             0 CENSO, 
+             0 NORMAL,
+             0 EXTRA,
+             CONTADOR.DATA,
+             COUNT(LEITO.CD_LEITO) LEITOS_ATIVOS  
+         FROM DBAMV.UNID_INT
+             , DBAMV.LEITO
+             , DBAMV.SETOR
+             , DBAMV.TIP_ACOM
+             ,( SELECT (TO_DATE('19/07/2018', 'DD/MM/YYYY ')-1 ) + ROWNUM DATA FROM DBAMV.CID
+                 WHERE ( TO_DATE('19/07/2018', 'DD/MM/YYYY ')-1 ) + ROWNUM <= TO_DATE(TO_DATE('19/07/2018', 'DD/MM/YYYY '))) CONTADOR
+         WHERE 
+                 NVL(TRUNC(LEITO.DT_DESATIVACAO),CONTADOR.DATA + 1) >= CONTADOR.DATA
+             AND TRUNC(LEITO.DT_ATIVACAO) <= CONTADOR.DATA
+             AND LEITO.CD_UNID_INT = UNID_INT.CD_UNID_INT 
+             AND UNID_INT.CD_UNID_INT = UNID_INT.CD_UNID_INT 
+             AND UNID_INT.CD_SETOR = SETOR.CD_SETOR
+             AND unid_int.tp_unid_int IN ( 'I')
+             and tip_acom.cd_tip_acom = leito.cd_tip_acom
+             and tip_acom.tp_acomodacao <> 'B'
+             AND SETOR.CD_MULTI_EMPRESA = 1
+             AND LEITO.SN_EXTRA = 'N'
+             AND LEITO.TP_SITUACAO = 'A'
+             AND LEITO.TP_OCUPACAO NOT IN ('T','M','E')
+         group by UNID_INT.CD_UNID_INT, UNID_INT.DS_UNID_INT, CONTADOR.DATA
+ 
+ UNION ALL
+ 
+ SELECT 
+ UNID_INT.CD_UNID_INT
+ , UNID_INT.DS_UNID_INT
+ , 0 CENSO
+ , COUNT(ATENDIME.cd_atendimento) NORMAL
+ , 0 EXTRA
+ , CONTADOR.DATA
+ , 0 LEITOS
+ FROM DBAMV.MOV_INT
+ 			 ,DBAMV.UNID_INT
+ 				 ,DBAMV.LEITO
+			 ,DBAMV.ATENDIME
+ ,( SELECT (TO_DATE('19/07/2018', 'DD/MM/YYYY ')-1 ) + ROWNUM DATA
+ FROM DBAMV.CID
+ WHERE ( TO_DATE('19/07/2018', 'DD/MM/YYYY ')-1 ) + ROWNUM <= TO_DATE(TO_DATE('19/07/2018', 'DD/MM/YYYY '))) CONTADOR
+ WHERE Trunc(DT_MOV_INT) <= CONTADOR.DATA - 1
+ And TRUNC(NVL(DT_LIB_MOV, SYSDATE) ) > CONTADOR.DATA - 1
+ And TP_MOV IN('O', 'I')
+ And LEITO.CD_UNID_INT = UNID_INT.CD_UNID_INT 
+ And MOV_INT.CD_ATENDIMENTO = ATENDIME.CD_ATENDIMENTO
+ And ATENDIME.TP_ATENDIMENTO IN ('I','H')
+ And MOV_INT.CD_LEITO = LEITO.CD_LEITO
+ And ATENDIME.CD_MULTI_EMPRESA 	= 1
+ and cd_atendimento_pai IS NULL
+ and unid_int.tp_unid_int IN ( 'I')
+ AND LEITO.SN_EXTRA = 'N'
+ group by UNID_INT.CD_UNID_INT, UNID_INT.DS_UNID_INT, CONTADOR.DATA
+ 
+ UNION ALL
+
+SELECT 
+ UNID_INT.CD_UNID_INT
+ , UNID_INT.DS_UNID_INT
+ , 0 CENSO
+ , 0 NORMAL
+ , COUNT(ATENDIME.cd_atendimento) EXTRA
+ , CONTADOR.DATA
+ , 0 LEITOS
+ FROM DBAMV.MOV_INT
+ 			 ,DBAMV.UNID_INT
+ 				 ,DBAMV.LEITO
+			 ,DBAMV.ATENDIME
+ ,( SELECT (TO_DATE('19/07/2018', 'DD/MM/YYYY ')-1 ) + ROWNUM DATA
+ FROM DBAMV.CID
+ WHERE ( TO_DATE('19/07/2018', 'DD/MM/YYYY ')-1 ) + ROWNUM <= TO_DATE(TO_DATE('19/07/2018', 'DD/MM/YYYY '))) CONTADOR
+ WHERE Trunc(DT_MOV_INT) <= CONTADOR.DATA - 1
+ And TRUNC(NVL(DT_LIB_MOV, SYSDATE) ) > CONTADOR.DATA - 1
+ And TP_MOV IN('O', 'I')
+ And LEITO.CD_UNID_INT = UNID_INT.CD_UNID_INT 
+ And MOV_INT.CD_ATENDIMENTO = ATENDIME.CD_ATENDIMENTO
+ And ATENDIME.TP_ATENDIMENTO IN ('I','H')
+ And MOV_INT.CD_LEITO = LEITO.CD_LEITO
+ And ATENDIME.CD_MULTI_EMPRESA 	= 1
+ and cd_atendimento_pai IS NULL
+ and unid_int.tp_unid_int IN ( 'I')
+ AND LEITO.SN_EXTRA = 'S'
+ group by UNID_INT.CD_UNID_INT, UNID_INT.DS_UNID_INT, CONTADOR.DATA
+ 
+ ) 
+ 
+ GROUP BY CD_UNID_INT, DS_UNID_INT, DATA
+ ORDER BY DATA, DS_UNID_INT
+ 
+)
+
