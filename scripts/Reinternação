@@ -1,0 +1,44 @@
+select 
+ unidade
+,sum (internacao) internacao
+,sum (reinternacao) reinternacao
+
+from(
+select 
+ u.ds_unid_int unidade
+, COUNT(ate.CD_atendimento) reinternacao
+, null internacao
+
+ from atendime ate
+ inner join leito l on l.CD_LEITO=ate.CD_LEITO
+ inner join UNID_INT u on u.CD_UNID_INT = l.CD_UNID_INT
+ where 
+ trunc(ate.dt_atendimento) between To_Date('01/08/2018','dd/mm/yyyy') and To_Date('03/09/2018','dd/mm/yyyy') 
+ and ate.tp_atendimento = 'I'
+ and exists (select cd_paciente 
+ from atendime at 
+ where at.cd_paciente = ate.cd_paciente
+ and at.cd_atendimento > ate.cd_atendimento
+ and at.CD_CID = ate.CD_CID
+ and (select ((at.dt_atendimento - ate.dt_atendimento) * 86400 / 3600) from DUAL) <= 360
+ and at.tp_atendimento = ate.tp_atendimento
+ )
+GROUP BY u.ds_unid_int
+
+union all
+
+select 
+ u.ds_unid_int UNIDADE
+, null reinternacao
+, COUNT(ate.CD_atendimento) internacao
+
+ from atendime ate
+ inner join leito l on l.CD_LEITO=ate.CD_LEITO
+ inner join UNID_INT u on u.CD_UNID_INT = l.CD_UNID_INT
+ where 
+ trunc(ate.dt_atendimento) between To_Date('01/08/2018','dd/mm/yyyy') and To_Date('03/09/2018','dd/mm/yyyy') 
+ and ate.tp_atendimento = 'I'
+GROUP BY u.ds_unid_int
+)
+GROUP BY unidade
+order by internacao desc
