@@ -1,0 +1,46 @@
+select 
+        pd.cd_protocolo_doc
+       ,pd.cd_setor
+       ,paciente.nm_paciente
+       ,sto.nm_setor setor_origem
+       ,pd.nm_usuario_envio
+       --,to_char(dt_envio,'dd/mm/yyyy hh24:mi') dt_envio
+       ,dt_envio
+       ,pd.cd_setor_destino
+       ,std.nm_setor setor_destino
+       ,ipd.cd_atendimento
+       ,ipd.cd_reg_fat
+       ,reg_fat.vl_total_conta
+       ,ipd.dt_realizacao
+       ,to_char(ipd.hr_realizacao, 'dd/mm/yyyy hh24:mi') hora_realizacao
+       ,dt_recebimento
+       ,nm_usuario_recebimento
+       ,dpt.ds_documento_prot
+       ,convenio.nm_convenio
+        
+from 
+     protocolo_doc pd
+    ,it_protocolo_doc ipd
+    ,documento_prot dpt
+    ,setor sto
+    ,setor std
+    ,reg_fat
+    ,convenio
+    ,atendime
+    ,paciente
+where
+    ipd.cd_protocolo_doc      =   pd.cd_protocolo_doc
+and dpt.cd_documento_prot     =   ipd.cd_documento_prot   
+and sto.cd_setor              =   pd.cd_setor
+and std.cd_setor              =   pd.cd_setor_destino
+and reg_fat.cd_reg_fat        =   ipd.cd_reg_fat
+and convenio.cd_convenio      =   reg_fat.cd_convenio
+and atendime.cd_atendimento   =   ipd.cd_atendimento
+and paciente.cd_paciente      =   atendime.cd_paciente
+and reg_fat.sn_fechada        =   'N'
+and dpt.cd_documento_prot in (29)
+and ipd.cd_reg_fat        = 11032
+order by dt_envio asc
+--and trunc(dt_envio) between to_date('23/03/2018','dd/mm/yyyy') and to_date('23/03/2018','dd/mm/yyyy');
+;
+
